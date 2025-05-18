@@ -115,30 +115,52 @@ function renderLessons() {
     });
 }
 
-// Create a lesson element
+// Create a lesson element with quick actions toolbar
 function createLessonElement(lesson, index) {
     const lessonEl = document.createElement('div');
     lessonEl.className = 'lesson-block';
     lessonEl.setAttribute('data-index', index);
     
+    // Calculate position based on day and time
     const lessonDate = new Date(lesson.date);
     const dayOffset = lessonDate.getDay() * (100 / 7);
     const timeOffset = getMinutesSinceMidnight(lesson.time);
     
+    // Set positioning styles
     lessonEl.style.left = `${dayOffset}%`;
     lessonEl.style.width = `${100/7 - 2}%`;
     lessonEl.style.top = `${timeOffset}px`;
     lessonEl.style.height = `${lesson.duration}px`;
     
+    // Create the main content and quick actions toolbar
     lessonEl.innerHTML = `
-        <div class="font-semibold">${lesson.title}</div>
-        <div class="text-sm">${lesson.time}</div>
-        <button onclick="deleteLesson(${index})" class="absolute top-1 right-1 text-white hover:text-red-200">×</button>
+        <div class="lesson-content">
+            <div class="font-semibold">${lesson.title}</div>
+            <div class="text-sm">${lesson.time}</div>
+        </div>
+        <div class="quick-actions">
+            <button class="quick-action-btn" title="Edit" onclick="editLesson(${index})">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+            </button>
+            <button class="quick-action-btn" title="Duplicate" onclick="duplicateLesson(${index})">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                </svg>
+            </button>
+            <button class="quick-action-btn text-red-500" title="Delete" onclick="deleteLesson(${index})">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </button>
+        </div>
     `;
     
     // Add click handler for lesson details
     lessonEl.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'BUTTON') {
+        // Only show details if not clicking a button
+        if (!e.target.closest('button')) {
             showLessonDetails(lesson);
         }
     });
@@ -370,4 +392,70 @@ document.addEventListener('keydown', (e) => {
 setInterval(updateCurrentTimeIndicator, 60000);
 
 // Initialize the timeline when the page loads
-document.addEventListener('DOMContentLoaded', initializeTimeline); 
+document.addEventListener('DOMContentLoaded', initializeTimeline);
+
+// Function to duplicate a lesson
+function duplicateLesson(index) {
+    const originalLesson = lessons[index];
+    const newLesson = { ...originalLesson };
+    
+    // Show a form to adjust the duplicate's date/time
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                <h2 class="text-xl font-bold mb-4">Duplicate Lesson</h2>
+                <form id="duplicateForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="duplicateDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                               value="${newLesson.date}" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Time</label>
+                        <input type="time" id="duplicateTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                               value="${newLesson.time}" required>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
+                            Duplicate
+                        </button>
+                        <button type="button" onclick="this.closest('.fixed').remove()" 
+                                class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Handle form submission
+    document.getElementById('duplicateForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        newLesson.date = document.getElementById('duplicateDate').value;
+        newLesson.time = document.getElementById('duplicateTime').value;
+        
+        // Check for overlaps
+        if (checkLessonOverlap(newLesson, lessons)) {
+            alert('This time slot overlaps with an existing lesson. Please choose a different time.');
+            return;
+        }
+        
+        lessons.push(newLesson);
+        localStorage.setItem('lessons', JSON.stringify(lessons));
+        renderLessons();
+        updateStats();
+        
+        // Show success confetti
+        confetti({
+            particleCount: 50,
+            spread: 45,
+            origin: { y: 0.7 }
+        });
+        
+        e.target.closest('.fixed').remove();
+    });
+} 
