@@ -2,32 +2,48 @@
 document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
+    const logoContainer = document.getElementById('logoContainer');
     const mainContent = document.querySelector('.flex-1');
     let isCollapsed = false;
 
-    sidebarToggle.addEventListener('click', () => {
+    function toggleSidebar() {
         isCollapsed = !isCollapsed;
         
         if (isCollapsed) {
+            sidebar.classList.add('collapsed');
             sidebar.classList.remove('w-64');
             sidebar.classList.add('w-20');
-            sidebar.querySelectorAll('span').forEach(span => span.classList.add('hidden'));
             mainContent.classList.remove('ml-64');
             sidebarToggle.innerHTML = `
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
             `;
         } else {
+            sidebar.classList.remove('collapsed');
             sidebar.classList.add('w-64');
             sidebar.classList.remove('w-20');
-            sidebar.querySelectorAll('span').forEach(span => span.classList.remove('hidden'));
             mainContent.classList.add('ml-64');
             sidebarToggle.innerHTML = `
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                 </svg>
             `;
+
+            // Force a repaint to ensure text is visible
+            sidebar.style.display = 'none';
+            sidebar.offsetHeight; // trigger a reflow
+            sidebar.style.display = 'flex';
+        }
+    }
+
+    // Toggle on button click
+    sidebarToggle.addEventListener('click', toggleSidebar);
+
+    // Toggle on logo click when sidebar is collapsed
+    logoContainer.addEventListener('click', () => {
+        if (isCollapsed) {
+            toggleSidebar();
         }
     });
 });
