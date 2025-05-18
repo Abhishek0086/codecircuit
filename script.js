@@ -4,6 +4,65 @@ let currentWeekStart = new Date();
 currentWeekStart.setHours(0, 0, 0, 0);
 currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
 
+// Add updateStats function
+function updateStats() {
+    const now = new Date();
+    const totalLessons = lessons.length;
+    const weeklyLessons = lessons.filter(lesson => isInCurrentWeek(new Date(lesson.date))).length;
+    const totalMinutes = lessons.reduce((acc, lesson) => acc + lesson.duration, 0);
+    const totalHours = Math.round(totalMinutes / 60);
+    
+    // Calculate streak
+    const streakDays = calculateStreak();
+    
+    document.getElementById('totalLessons').textContent = totalLessons;
+    document.getElementById('weeklyLessons').textContent = weeklyLessons;
+    document.getElementById('totalHours').textContent = totalHours;
+    document.getElementById('streakDays').textContent = streakDays;
+}
+
+function calculateStreak() {
+    if (lessons.length === 0) return 0;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const dates = lessons.map(lesson => {
+        const date = new Date(lesson.date);
+        date.setHours(0, 0, 0, 0);
+        return date.getTime();
+    });
+    
+    const uniqueDates = [...new Set(dates)].sort((a, b) => b - a);
+    let streak = 1;
+    
+    for (let i = 0; i < uniqueDates.length - 1; i++) {
+        const current = new Date(uniqueDates[i]);
+        const next = new Date(uniqueDates[i + 1]);
+        const diffDays = (current - next) / (1000 * 60 * 60 * 24);
+        
+        if (diffDays === 1) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+    
+    return streak;
+}
+
+// Add current time indicator
+function updateCurrentTimeIndicator() {
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    const indicator = document.querySelector('.current-time-indicator') || document.createElement('div');
+    
+    indicator.className = 'current-time-indicator';
+    indicator.style.top = `${minutes}px`;
+    
+    document.getElementById('lessonsContainer').appendChild(indicator);
+}
+
 // Initialize the timeline
 function initializeTimeline() {
     const timeIndicators = document.getElementById('timeIndicators');
@@ -25,6 +84,8 @@ function initializeTimeline() {
     
     updateWeekDisplay();
     renderLessons();
+    updateStats();
+    updateCurrentTimeIndicator();
 }
 
 // Update the week display
@@ -214,7 +275,6 @@ document.getElementById('lessonForm').addEventListener('submit', (e) => {
         duration: parseInt(document.getElementById('lessonDuration').value)
     };
 
-    // Check for overlaps
     if (checkLessonOverlap(lesson, lessons)) {
         alert('This lesson overlaps with an existing lesson. Please choose a different time.');
         return;
@@ -223,6 +283,14 @@ document.getElementById('lessonForm').addEventListener('submit', (e) => {
     lessons.push(lesson);
     localStorage.setItem('lessons', JSON.stringify(lessons));
     renderLessons();
+    updateStats();
+    
+    // Show confetti
+    confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+    });
     
     e.target.reset();
 });
@@ -231,18 +299,21 @@ document.getElementById('prevWeek').addEventListener('click', () => {
     currentWeekStart.setDate(currentWeekStart.getDate() - 7);
     updateWeekDisplay();
     renderLessons();
+    updateStats();
 });
 
 document.getElementById('nextWeek').addEventListener('click', () => {
     currentWeekStart.setDate(currentWeekStart.getDate() + 7);
     updateWeekDisplay();
     renderLessons();
+    updateStats();
 });
 
 function deleteLesson(index) {
     lessons.splice(index, 1);
     localStorage.setItem('lessons', JSON.stringify(lessons));
     renderLessons();
+    updateStats();
 }
 
 function showLessonDetails(lesson) {
@@ -273,4 +344,30 @@ function formatDate(date) {
     });
 }
 
-// Add keyboard navigationdocument.addEventListener('keydown', (e) => {    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;        switch(e.key) {        case 'ArrowLeft':            if (e.ctrlKey || e.metaKey) {                document.getElementById('prevWeek').click();            }            break;        case 'ArrowRight':            if (e.ctrlKey || e.metaKey) {                document.getElementById('nextWeek').click();            }            break;        case 'Escape':            const modal = document.querySelector('.fixed.inset-0');            if (modal) modal.remove();            break;    }});// Initialize the timeline when the page loadsdocument.addEventListener('DOMContentLoaded', initializeTimeline); 
+// Add keyboard navigation
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    switch(e.key) {
+        case 'ArrowLeft':
+            if (e.ctrlKey || e.metaKey) {
+                document.getElementById('prevWeek').click();
+            }
+            break;
+        case 'ArrowRight':
+            if (e.ctrlKey || e.metaKey) {
+                document.getElementById('nextWeek').click();
+            }
+            break;
+        case 'Escape':
+            const modal = document.querySelector('.fixed.inset-0');
+            if (modal) modal.remove();
+            break;
+    }
+});
+
+// Update current time indicator every minute
+setInterval(updateCurrentTimeIndicator, 60000);
+
+// Initialize the timeline when the page loads
+document.addEventListener('DOMContentLoaded', initializeTimeline); 
