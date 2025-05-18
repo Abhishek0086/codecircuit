@@ -1,0 +1,204 @@
+// Store lessons in localStorage
+let lessons = JSON.parse(localStorage.getItem('lessons')) || [];
+let currentWeekStart = new Date();
+currentWeekStart.setHours(0, 0, 0, 0);
+currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+
+// Initialize the timeline
+function initializeTimeline() {
+    const timeIndicators = document.getElementById('timeIndicators');
+    timeIndicators.innerHTML = '';
+    
+    // Create time slots for 24 hours
+    for (let hour = 0; hour < 24; hour++) {
+        const timeSlot = document.createElement('div');
+        timeSlot.className = 'time-slot';
+        timeSlot.style.top = `${hour * 60}px`;
+        
+        const timeLabel = document.createElement('div');
+        timeLabel.className = 'time-label';
+        timeLabel.textContent = `${hour.toString().padStart(2, '0')}:00`;
+        timeSlot.appendChild(timeLabel);
+        
+        timeIndicators.appendChild(timeSlot);
+    }
+    
+    updateWeekDisplay();
+    renderLessons();
+}
+
+// Update the week display
+function updateWeekDisplay() {
+    const endDate = new Date(currentWeekStart);
+    endDate.setDate(endDate.getDate() + 6);
+    
+    const formatDate = (date) => {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+    
+    document.getElementById('currentWeek').textContent = 
+        `${formatDate(currentWeekStart)} - ${formatDate(endDate)}`;
+}
+
+// Render lessons on the timeline
+function renderLessons() {
+    const container = document.getElementById('lessonsContainer');
+    container.innerHTML = '';
+    
+    lessons.forEach((lesson, index) => {
+        const lessonDate = new Date(lesson.date);
+        if (isInCurrentWeek(lessonDate)) {
+            const lessonEl = createLessonElement(lesson, index);
+            container.appendChild(lessonEl);
+        }
+    });
+}
+
+// Create a lesson element
+function createLessonElement(lesson, index) {
+    const lessonEl = document.createElement('div');
+    lessonEl.className = 'lesson-block';
+    lessonEl.setAttribute('data-index', index);
+    
+    const lessonDate = new Date(lesson.date);
+    const dayOffset = lessonDate.getDay() * (100 / 7); // Calculate percentage for day column
+    const timeOffset = getMinutesSinceMidnight(lesson.time);
+    
+    lessonEl.style.left = `${dayOffset}%`;
+    lessonEl.style.width = `${100/7 - 2}%`; // Subtract for margins
+    lessonEl.style.top = `${timeOffset}px`;
+    lessonEl.style.height = `${lesson.duration}px`;
+    
+    lessonEl.innerHTML = `
+        <div class="font-semibold">${lesson.title}</div>
+        <div class="text-sm">${lesson.time}</div>
+        <button onclick="deleteLesson(${index})" class="absolute top-1 right-1 text-white hover:text-red-200">×</button>
+    `;
+    
+    makeDraggable(lessonEl);
+    return lessonEl;
+}
+
+// Make an element draggable
+function makeDraggable(element) {
+    let isDragging = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    element.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+
+    function dragStart(e) {
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+
+        if (e.target === element) {
+            isDragging = true;
+            element.classList.add('dragging');
+        }
+    }
+
+    function drag(e) {
+        if (isDragging) {
+            e.preventDefault();
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
+
+            xOffset = currentX;
+            yOffset = currentY;
+
+            const container = document.getElementById('lessonsContainer');
+            const rect = container.getBoundingClientRect();
+            const relativeX = e.clientX - rect.left;
+            const relativeY = e.clientY - rect.top;
+
+            // Calculate new day and time
+            const dayWidth = container.offsetWidth / 7;
+            const newDay = Math.floor(relativeX / dayWidth);
+            const newMinutes = Math.floor(relativeY / 60) * 60;
+
+            if (newDay >= 0 && newDay < 7 && newMinutes >= 0 && newMinutes < 1440) {
+                const index = parseInt(element.getAttribute('data-index'));
+                const lesson = lessons[index];
+                
+                // Update lesson time and date
+                const newDate = new Date(currentWeekStart);
+                newDate.setDate(newDate.getDate() + newDay);
+                
+                const hours = Math.floor(newMinutes / 60);
+                const minutes = newMinutes % 60;
+                
+                lesson.date = newDate.toISOString().split('T')[0];
+                lesson.time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                
+                // Update position
+                element.style.left = `${newDay * (100 / 7)}%`;
+                element.style.top = `${newMinutes}px`;
+            }
+        }
+    }
+
+    function dragEnd() {
+        if (isDragging) {
+            isDragging = false;
+            element.classList.remove('dragging');
+            localStorage.setItem('lessons', JSON.stringify(lessons));
+        }
+    }
+}
+
+// Helper functions
+function getMinutesSinceMidnight(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+function isInCurrentWeek(date) {
+    const endDate = new Date(currentWeekStart);
+    endDate.setDate(endDate.getDate() + 7);
+    return date >= currentWeekStart && date < endDate;
+}
+
+// Event Listeners
+document.getElementById('lessonForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const lesson = {
+        title: document.getElementById('lessonTitle').value,
+        date: document.getElementById('lessonDate').value,
+        time: document.getElementById('lessonTime').value,
+        duration: parseInt(document.getElementById('lessonDuration').value)
+    };
+    
+    lessons.push(lesson);
+    localStorage.setItem('lessons', JSON.stringify(lessons));
+    renderLessons();
+    
+    e.target.reset();
+});
+
+document.getElementById('prevWeek').addEventListener('click', () => {
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+    updateWeekDisplay();
+    renderLessons();
+});
+
+document.getElementById('nextWeek').addEventListener('click', () => {
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    updateWeekDisplay();
+    renderLessons();
+});
+
+function deleteLesson(index) {
+    lessons.splice(index, 1);
+    localStorage.setItem('lessons', JSON.stringify(lessons));
+    renderLessons();
+}
+
+// Initialize the timeline when the page loads
+document.addEventListener('DOMContentLoaded', initializeTimeline); 
