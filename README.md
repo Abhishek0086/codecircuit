@@ -2,6 +2,29 @@
 
 A dynamic, interactive web application for managing and scheduling lessons with an intuitive drag-and-drop interface. This tool helps educators and instructors manage their lesson schedules efficiently.
 
+## Development Roadmap
+
+### Phase 1 (MVP) - Current
+- ✅ Basic weekly timeline view
+- ✅ Add/delete lessons
+- ✅ Drag-and-drop rescheduling
+- ✅ Local storage persistence
+- ✅ Week navigation
+
+### Phase 2 (Enhanced Features)
+- [ ] Lesson categories/tags with color coding
+- [ ] Lesson details modal
+- [ ] Lesson duration validation (prevent overlaps)
+- [ ] Responsive design improvements
+- [ ] Toast notifications for actions
+
+### Phase 3 (Advanced Features)
+- [ ] Recurring lessons
+- [ ] Multi-week view
+- [ ] Export/import lesson data
+- [ ] User authentication
+- [ ] Backend integration
+
 ## Features
 
 - **Interactive Timeline View**: Visual weekly calendar with 24-hour time slots

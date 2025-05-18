@@ -126,19 +126,30 @@ function makeDraggable(element) {
                 const index = parseInt(element.getAttribute('data-index'));
                 const lesson = lessons[index];
                 
-                // Update lesson time and date
-                const newDate = new Date(currentWeekStart);
-                newDate.setDate(newDate.getDate() + newDay);
-                
-                const hours = Math.floor(newMinutes / 60);
-                const minutes = newMinutes % 60;
-                
-                lesson.date = newDate.toISOString().split('T')[0];
-                lesson.time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                
-                // Update position
-                element.style.left = `${newDay * (100 / 7)}%`;
-                element.style.top = `${newMinutes}px`;
+                // Create temporary lesson object for overlap check
+                const tempLesson = {
+                    ...lesson,
+                    date: (() => {
+                        const newDate = new Date(currentWeekStart);
+                        newDate.setDate(newDate.getDate() + newDay);
+                        return newDate.toISOString().split('T')[0];
+                    })(),
+                    time: `${Math.floor(newMinutes / 60).toString().padStart(2, '0')}:${(newMinutes % 60).toString().padStart(2, '0')}`
+                };
+
+                // Check for overlap and update visual feedback
+                if (!checkLessonOverlap(tempLesson, lessons, index)) {
+                    element.classList.remove('invalid-position');
+                    // Update lesson time and date
+                    lesson.date = tempLesson.date;
+                    lesson.time = tempLesson.time;
+                    
+                    // Update position
+                    element.style.left = `${newDay * (100 / 7)}%`;
+                    element.style.top = `${newMinutes}px`;
+                } else {
+                    element.classList.add('invalid-position');
+                }
             }
         }
     }
@@ -146,7 +157,7 @@ function makeDraggable(element) {
     function dragEnd() {
         if (isDragging) {
             isDragging = false;
-            element.classList.remove('dragging');
+            element.classList.remove('dragging', 'invalid-position');
             localStorage.setItem('lessons', JSON.stringify(lessons));
         }
     }
@@ -164,6 +175,25 @@ function isInCurrentWeek(date) {
     return date >= currentWeekStart && date < endDate;
 }
 
+// Add this function after the helper functions
+function checkLessonOverlap(newLesson, existingLessons, excludeIndex = -1) {
+    const newStart = getMinutesSinceMidnight(newLesson.time);
+    const newEnd = newStart + newLesson.duration;
+    const newDate = new Date(newLesson.date).toDateString();
+
+    return existingLessons.some((lesson, index) => {
+        if (index === excludeIndex) return false;
+        
+        const lessonDate = new Date(lesson.date).toDateString();
+        if (lessonDate !== newDate) return false;
+
+        const lessonStart = getMinutesSinceMidnight(lesson.time);
+        const lessonEnd = lessonStart + lesson.duration;
+
+        return (newStart < lessonEnd && newEnd > lessonStart);
+    });
+}
+
 // Event Listeners
 document.getElementById('lessonForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -174,6 +204,12 @@ document.getElementById('lessonForm').addEventListener('submit', (e) => {
         time: document.getElementById('lessonTime').value,
         duration: parseInt(document.getElementById('lessonDuration').value)
     };
+
+    // Check for overlaps
+    if (checkLessonOverlap(lesson, lessons)) {
+        alert('This lesson overlaps with an existing lesson. Please choose a different time.');
+        return;
+    }
     
     lessons.push(lesson);
     localStorage.setItem('lessons', JSON.stringify(lessons));
