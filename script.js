@@ -339,16 +339,32 @@ function deleteLesson(index) {
 }
 
 function showLessonDetails(lesson) {
+    const lessonDate = new Date(lesson.date);
+    const endTime = addMinutesToTime(lesson.time, lesson.duration);
+    
     const detailsHtml = `
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+             onclick="this.remove()" role="dialog" aria-labelledby="lesson-details-title">
             <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4" onclick="event.stopPropagation()">
-                <h2 class="text-xl font-bold mb-4">${lesson.title}</h2>
-                <div class="space-y-2">
-                    <p><span class="font-semibold">Date:</span> ${formatDate(new Date(lesson.date))}</p>
-                    <p><span class="font-semibold">Time:</span> ${lesson.time}</p>
-                    <p><span class="font-semibold">Duration:</span> ${lesson.duration} minutes</p>
+                <h2 id="lesson-details-title" class="text-xl font-bold mb-4">${lesson.title}</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center text-gray-600">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>${formatDate(lessonDate)}</span>
+                    </div>
+                    <div class="flex items-center text-gray-600">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>${lesson.time} - ${endTime} (${lesson.duration} minutes)</span>
+                    </div>
                 </div>
-                <button class="mt-4 bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 w-full" onclick="this.closest('.fixed').remove()">
+                <button class="mt-6 bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 w-full" 
+                        onclick="this.closest('.fixed').remove()">
                     Close
                 </button>
             </div>
@@ -458,4 +474,95 @@ function duplicateLesson(index) {
         
         e.target.closest('.fixed').remove();
     });
+}
+
+// Function to edit a lesson
+function editLesson(index) {
+    const lesson = lessons[index];
+    
+    // Create edit form modal
+    const modalHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                <h2 class="text-xl font-bold mb-4">Edit Lesson</h2>
+                <form id="editForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Lesson Title</label>
+                        <input type="text" id="editTitle" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                               value="${lesson.title}" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Date</label>
+                            <input type="date" id="editDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                                   value="${lesson.date}" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Time</label>
+                            <input type="time" id="editTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                                   value="${lesson.time}" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+                        <input type="number" id="editDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" 
+                               value="${lesson.duration}" required min="15" step="15">
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
+                            Save Changes
+                        </button>
+                        <button type="button" onclick="this.closest('.fixed').remove()" 
+                                class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Handle form submission
+    document.getElementById('editForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const updatedLesson = {
+            title: document.getElementById('editTitle').value,
+            date: document.getElementById('editDate').value,
+            time: document.getElementById('editTime').value,
+            duration: parseInt(document.getElementById('editDuration').value)
+        };
+        
+        // Check for overlaps (excluding the current lesson)
+        if (checkLessonOverlap(updatedLesson, lessons, index)) {
+            alert('This time slot overlaps with another lesson. Please choose a different time.');
+            return;
+        }
+        
+        // Update the lesson
+        lessons[index] = updatedLesson;
+        localStorage.setItem('lessons', JSON.stringify(lessons));
+        renderLessons();
+        updateStats();
+        
+        // Show success animation
+        const lessonEl = document.querySelector(`[data-index="${index}"]`);
+        if (lessonEl) {
+            lessonEl.classList.add('update-success');
+            setTimeout(() => lessonEl.classList.remove('update-success'), 1000);
+        }
+        
+        e.target.closest('.fixed').remove();
+    });
+}
+
+// Helper function to add minutes to a time string
+function addMinutesToTime(timeStr, minutes) {
+    const [hours, mins] = timeStr.split(':').map(Number);
+    const totalMinutes = hours * 60 + mins + minutes;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMins = totalMinutes % 60;
+    return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
 } 
