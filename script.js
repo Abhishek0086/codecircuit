@@ -61,11 +61,11 @@ function createLessonElement(lesson, index) {
     lessonEl.setAttribute('data-index', index);
     
     const lessonDate = new Date(lesson.date);
-    const dayOffset = lessonDate.getDay() * (100 / 7); // Calculate percentage for day column
+    const dayOffset = lessonDate.getDay() * (100 / 7);
     const timeOffset = getMinutesSinceMidnight(lesson.time);
     
     lessonEl.style.left = `${dayOffset}%`;
-    lessonEl.style.width = `${100/7 - 2}%`; // Subtract for margins
+    lessonEl.style.width = `${100/7 - 2}%`;
     lessonEl.style.top = `${timeOffset}px`;
     lessonEl.style.height = `${lesson.duration}px`;
     
@@ -74,6 +74,13 @@ function createLessonElement(lesson, index) {
         <div class="text-sm">${lesson.time}</div>
         <button onclick="deleteLesson(${index})" class="absolute top-1 right-1 text-white hover:text-red-200">×</button>
     `;
+    
+    // Add click handler for lesson details
+    lessonEl.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') {
+            showLessonDetails(lesson);
+        }
+    });
     
     makeDraggable(lessonEl);
     return lessonEl;
@@ -100,6 +107,8 @@ function makeDraggable(element) {
         if (e.target === element) {
             isDragging = true;
             element.classList.add('dragging');
+            // Store the start time to differentiate between clicks and drags
+            element.dataset.dragStartTime = Date.now();
         }
     }
 
@@ -236,5 +245,32 @@ function deleteLesson(index) {
     renderLessons();
 }
 
-// Initialize the timeline when the page loads
-document.addEventListener('DOMContentLoaded', initializeTimeline); 
+function showLessonDetails(lesson) {
+    const detailsHtml = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4" onclick="event.stopPropagation()">
+                <h2 class="text-xl font-bold mb-4">${lesson.title}</h2>
+                <div class="space-y-2">
+                    <p><span class="font-semibold">Date:</span> ${formatDate(new Date(lesson.date))}</p>
+                    <p><span class="font-semibold">Time:</span> ${lesson.time}</p>
+                    <p><span class="font-semibold">Duration:</span> ${lesson.duration} minutes</p>
+                </div>
+                <button class="mt-4 bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 w-full" onclick="this.closest('.fixed').remove()">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', detailsHtml);
+}
+
+function formatDate(date) {
+    return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Add keyboard navigationdocument.addEventListener('keydown', (e) => {    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;        switch(e.key) {        case 'ArrowLeft':            if (e.ctrlKey || e.metaKey) {                document.getElementById('prevWeek').click();            }            break;        case 'ArrowRight':            if (e.ctrlKey || e.metaKey) {                document.getElementById('nextWeek').click();            }            break;        case 'Escape':            const modal = document.querySelector('.fixed.inset-0');            if (modal) modal.remove();            break;    }});// Initialize the timeline when the page loadsdocument.addEventListener('DOMContentLoaded', initializeTimeline); 
