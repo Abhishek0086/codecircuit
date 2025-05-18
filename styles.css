@@ -1,3 +1,91 @@
+/* Sidebar Styles */
+#sidebar {
+    transition: width 0.3s ease;
+}
+
+#sidebar .nav-item {
+    position: relative;
+    white-space: nowrap;
+}
+
+#sidebar .nav-item:hover::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #3b82f6;
+    border-radius: 0 4px 4px 0;
+}
+
+#sidebar a {
+    position: relative;
+    overflow: hidden;
+}
+
+#sidebar a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #3b82f6;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s ease;
+}
+
+#sidebar a:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
+#sidebar .active {
+    background-color: #eff6ff;
+    color: #3b82f6;
+}
+
+#sidebar .active svg {
+    color: #3b82f6;
+}
+
+/* Typography */
+#sidebar h1 {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.025em;
+}
+
+#sidebar span {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 500;
+}
+
+/* Smooth transitions */
+#sidebar * {
+    transition: all 0.2s ease;
+}
+
+#sidebar button:active {
+    transform: scale(0.95);
+}
+
+/* Bottom menu separator */
+#sidebar .border-t {
+    position: relative;
+}
+
+#sidebar .border-t::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    right: 1rem;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e5e7eb, transparent);
+}
+
 .lesson-block {
     position: absolute;
     width: calc(100% - 1rem);
